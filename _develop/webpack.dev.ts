@@ -1,9 +1,12 @@
-const path = require('path');
-const webpack = require('webpack');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const pkg = require('../package.json');
+import path from 'path'
+import { Configuration, BannerPlugin, DefinePlugin } from 'webpack'
+import MiniCssExtractPlugin from 'mini-css-extract-plugin'
+import pkg from '../package.json'
+import CopyWebpackPlugin from 'copy-webpack-plugin'
 
-const bannerPack = new webpack.BannerPlugin({
+import 'webpack-dev-server'
+
+const bannerPack = new BannerPlugin({
   banner: [
     `Quill Editor v${pkg.version}`,
     'https://quilljs.com/',
@@ -12,7 +15,8 @@ const bannerPack = new webpack.BannerPlugin({
   ].join('\n'),
   entryOnly: true,
 });
-const constantPack = new webpack.DefinePlugin({
+
+const constantPack = new DefinePlugin({
   QUILL_VERSION: JSON.stringify(pkg.version),
 });
 
@@ -67,8 +71,10 @@ const tsRules = {
   ],
 };
 
-const baseConfig = {
+const baseConfig: Configuration = {
   mode: 'development',
+  devtool: 'inline-source-map',
+
   context: path.resolve(__dirname, '..'),
   entry: {
     'quill.js': ['./quill.js'],
@@ -83,8 +89,9 @@ const baseConfig = {
     library: 'Quill',
     libraryExport: 'default',
     libraryTarget: 'umd',
-    path: path.resolve(__dirname, '../dist/'),
+    // path: path.resolve(__dirname, '../dist/'),
   },
+
   resolve: {
     alias: {
       parchment: path.resolve(
@@ -94,6 +101,7 @@ const baseConfig = {
     },
     extensions: ['.js', '.styl', '.ts'],
   },
+
   module: {
     rules: [jsRules, stylRules, svgRules, tsRules],
     noParse: [
@@ -102,35 +110,25 @@ const baseConfig = {
       /\/node_modules\/extend\/index\.js$/,
     ],
   },
+
   plugins: [
     bannerPack,
     constantPack,
     new MiniCssExtractPlugin({
       filename: '[name].css',
     }),
+    new CopyWebpackPlugin({
+      patterns: [{ from: path.resolve(__dirname, './static/'), to: './' }],
+    }),
   ],
+
   devServer: {
-    contentBase: path.resolve(__dirname, '../dist'),
-    hot: false,
-    port: process.env.npm_package_config_ports_webpack,
-    stats: 'minimal',
-    disableHostCheck: true,
+    hot: true,
+    open: ['snow.html'],
+    // static: {
+    // directory: path.resolve(__dirname, '../dist'),
+    // },
   },
 };
 
-module.exports = env => {
-  if (env && env.minimize) {
-    const { devServer, ...prodConfig } = baseConfig;
-    return {
-      ...prodConfig,
-      mode: 'production',
-      entry: { 'quill.min.js': './quill.js' },
-      devtool: 'source-map',
-    };
-  }
-  if (env && env.coverage) {
-    baseConfig.module.rules[0].use[0].options.plugins = ['istanbul'];
-    return baseConfig;
-  }
-  return baseConfig;
-};
+export default baseConfig;
